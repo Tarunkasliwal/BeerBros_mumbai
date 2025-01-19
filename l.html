@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Langflow API Frontend</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f4;
+      color: #333;
+    }
+    .container {
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 16px;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .response {
+      margin-top: 20px;
+      padding: 15px;
+      background: #e9ecef;
+      border-radius: 5px;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Langflow API Tester</h1>
+    <div class="form-group">
+      <label for="message">Message:</label>
+      <input type="text" id="message" placeholder="Enter your message">
+    </div>
+    <div class="form-group">
+      <label for="inputType">Input Type:</label>
+      <select id="inputType">
+        <option value="chat" selected>Chat</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="outputType">Output Type:</label>
+      <select id="outputType">
+        <option value="chat" selected>Chat</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="applicationToken">Application Token:</label>
+      <input type="text" id="applicationToken" placeholder="Enter your application token">
+    </div>
+    <button onclick="sendRequest()">Send Request</button>
+    <div id="response" class="response" hidden></div>
+  </div>
+
+  <script>
+    async function sendRequest() {
+      const message = document.getElementById("message").value;
+      const inputType = document.getElementById("inputType").value;
+      const outputType = document.getElementById("outputType").value;
+      const applicationToken = document.getElementById("applicationToken").value;
+
+      const endpoint = "<YOUR_ENDPOINT>"; // Replace with your endpoint
+      const baseUrl = "https://api.langflow.astra.datastax.com";
+      const url = `${baseUrl}/lf/e889a07c-43c2-42ff-ab2a-375f6f7540b3/api/v1/run/${endpoint}`;
+
+      const payload = {
+        input_value: message,
+        output_type: outputType,
+        input_type: inputType,
+      };
+
+      const headers = {
+        "Authorization": "Bearer " + applicationToken,
+        "Content-Type": "application/json",
+      };
+
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: headers,
+          body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+        document.getElementById("response").innerHTML = JSON.stringify(data, null, 2);
+        document.getElementById("response").hidden = false;
+      } catch (error) {
+        document.getElementById("response").innerHTML = `Error: ${error.message}`;
+        document.getElementById("response").hidden = false;
+      }
+    }
+  </script>
+</body>
+</html>

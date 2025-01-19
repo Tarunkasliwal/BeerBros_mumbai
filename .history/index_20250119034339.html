@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BeerBros AI Chat</title>
+    <style>
+        /* ... (keep all the existing CSS styles) ... */
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">🍺 BeerBros AI Chat</div>
+        <div class="tagline">Powered by Advanced AI Technology</div>
+    </div>
+
+    <div class="container">
+        <div class="chat-container">
+            <div class="messages" id="messages">
+                <div class="message bot-message">
+                    Hello! I'm your AI assistant. How can I help you today?
+                </div>
+            </div>
+            <div class="loading" id="loading">
+                <span class="loading-dots">Thinking</span>
+            </div>
+            <div class="input-container">
+                <input type="text" id="message-input" placeholder="Type your message here...">
+                <button id="send-button">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const messageInput = document.getElementById('message-input');
+            const sendButton = document.getElementById('send-button');
+            const messagesContainer = document.getElementById('messages');
+            const loadingIndicator = document.getElementById('loading');
+
+            function addMessage(message, isUser = false) {
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('message');
+                messageElement.classList.add(isUser ? 'user-message' : 'bot-message');
+                messageElement.textContent = message;
+                messagesContainer.appendChild(messageElement);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+
+            async function sendMessage() {
+                const message = messageInput.value.trim();
+                if (!message) return;
+
+                // Disable input and button while processing
+                messageInput.disabled = true;
+                sendButton.disabled = true;
+
+                // Clear input and add user message
+                messageInput.value = '';
+                addMessage(message, true);
+
+                // Show loading indicator
+                loadingIndicator.style.display = 'block';
+
+                try {
+                    const response = await fetch('/api/process', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ message })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.status === 'success') {
+                        addMessage(data.response);
+                    } else {
+                        addMessage('Error: ' + (data.message || 'Unknown error occurred'));
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    addMessage('Sorry, something went wrong. Please try again later.');
+                } finally {
+                    // Re-enable input and button
+                    messageInput.disabled = false;
+                    sendButton.disabled = false;
+                    loadingIndicator.style.display = 'none';
+                    messageInput.focus();
+                }
+            }
+
+            // Event listeners
+            sendButton.addEventListener('click', sendMessage);
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

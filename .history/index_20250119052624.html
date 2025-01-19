@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Langflow Chat Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f0f2f5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .chat-header {
+            background: #2c3e50;
+            color: white;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .chat-header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .chat-messages {
+            flex-grow: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            max-height: calc(100vh - 300px);
+        }
+
+        .message {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+
+        .user-message {
+            background: #e3f2fd;
+            margin-left: auto;
+            color: #1565c0;
+        }
+
+        .bot-message {
+            background: #f5f5f5;
+            margin-right: auto;
+            color: #333;
+        }
+
+        .input-container {
+            padding: 1.5rem;
+            background: white;
+            border-top: 1px solid #eee;
+        }
+
+        .input-form {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .message-input {
+            flex-grow: 1;
+            padding: 0.8rem 1.2rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: #2c3e50;
+        }
+
+        .send-button {
+            padding: 0.8rem 1.5rem;
+            background: #2c3e50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+        }
+
+        .send-button:hover {
+            background: #34495e;
+        }
+
+        .send-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #2c3e50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .status-indicator {
+            padding: 0.5rem;
+            text-align: center;
+            font-size: 0.9rem;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="chat-container">
+            <div class="chat-header">
+                <h1>Langflow Chat Interface</h1>
+                <div class="status-indicator" id="status">Connected to Langflow API</div>
+            </div>
+            <div class="chat-messages" id="chat-messages"></div>
+            <div class="input-container">
+                <form class="input-form" id="chat-form">
+                    <input type="text" class="message-input" id="message-input" placeholder="Type your message here..."
+                        autocomplete="off">
+                    <button type="submit" class="send-button" id="send-button">Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class LangflowClient {
+            constructor(baseURL, applicationToken) {
+                this.baseURL = baseURL;
+                this.applicationToken = applicationToken;
+            }
+
+            async post(endpoint, body, headers = { "Content-Type": "application/json" }) {
+                headers["Authorization"] = `Bearer ${this.applicationToken}`;
+                headers["Content-Type"] = "application/json";
+                const url = `${this.baseURL}${endpoint}`;
+
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify(body)
+                    });
+
+                    const responseMessage = await response.json();
+                    if (!response.ok) {
+                        throw new Error(`${response.status} ${response.statusText} - ${JSON.stringify(responseMessage)}`);
+                    }
+                    return responseMessage;
+                } catch (error) {
+                    console.error('Request Error:', error.message);
+                    throw error;
+                }
+            }
+
+            async initiateSession(flowId, langflowId, inputValue, inputType = 'chat', outputType = 'chat', stream = false, tweaks = {}) {
+                const endpoint = `/lf/${langflowId}/api/v1/run/${flowId}?stream=${stream}`;
+                return this.post(endpoint, {
+                    input_value: inputValue,
+                    input_type: inputType,
+                    output_type: outputType,
+                    tweaks: tweaks
+                });
+            }
+
+            async runFlow(flowIdOrName, langflowId, inputValue, inputType = 'chat', outputType = 'chat', tweaks = {}, stream = false) {
+                try {
+                    const response = await this.initiateSession(
+                        flowIdOrName,
+                        langflowId,
+                        inputValue,
+                        inputType,
+                        outputType,
+                        stream,
+                        tweaks
+                    );
+                    return response;
+                } catch (error) {
+                    console.error('Error running flow:', error);
+                    throw error;
+                }
+            }
+        }
+
+        // Configuration
+        const CONFIG = {
+            baseURL = "https://api.langflow.astra.datastax.com"
+            LANGFLOW_ID = "e889a07c-43c2-42ff-ab2a-375f6f7540b3"
+            FLOW_ID = "51a07a7b-d922-42c6-809f-4755f23d200d",
+            applicationToken: 'AstraCS:SvyOKgnCzEQYkssZplAukyuK:256466296e0ea337e7b78b213e9f8a453f14dc3205e89be0e7c556eefca0c84c',
+            tweaks: {
+                "ChatInput-SnYiF": {},
+                "ChatOutput-o0NcW": {},
+                "GroqModel-xbFdE": {}
+            }
+        };
+
+        // Initialize Langflow Client
+        const client = new LangflowClient(CONFIG.baseURL, CONFIG.applicationToken);
+
+        // DOM Elements
+        const chatForm = document.getElementById('chat-form');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const chatMessages = document.getElementById('chat-messages');
+        const statusIndicator = document.getElementById('status');
+
+        // Helper Functions
+        function addMessage(message, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+            messageDiv.textContent = message;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function setLoading(loading) {
+            sendButton.disabled = loading;
+            if (loading) {
+                sendButton.innerHTML = '<div class="loading"></div>';
+                statusIndicator.textContent = 'Processing...';
+            } else {
+                sendButton.textContent = 'Send';
+                statusIndicator.textContent = 'Connected to Langflow API';
+            }
+        }
+
+        function showError(error) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = error;
+            chatMessages.appendChild(errorDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Form Submit Handler
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            // Add user message to chat
+            addMessage(message, true);
+            messageInput.value = '';
+            setLoading(true);
+
+            try {
+                const response = await client.runFlow(
+                    CONFIG.flowId,
+                    CONFIG.langflowId,
+                    message,
+                    'chat',
+                    'chat',
+                    CONFIG.tweaks,
+                    false
+                );
+
+                if (response && response.messages && response.messages.length > 0) {
+                    // Add bot response to chat
+                    addMessage(response.messages[0].message);
+                } else {
+                    showError('Received empty response from the API');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Failed to get response from API: ' + error.message);
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        // Input handler for better UX
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                chatForm.dispatchEvent(new Event('submit'));
+            }
+        });
+
+        // Initial focus
+        messageInput.focus();
+    </script>
+</body>
+
+</html>

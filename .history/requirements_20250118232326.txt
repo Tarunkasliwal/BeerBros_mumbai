@@ -1,0 +1,4 @@
+flask
+cassandra-driver
+requests
+pandas
