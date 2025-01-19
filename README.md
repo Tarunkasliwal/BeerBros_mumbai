@@ -40,8 +40,7 @@ ART is a powerful social media analytics tool that combines sentiment analysis, 
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/tarunkasliwal/BeerBros_mumbai.git
-cd twitter-art
+git clone https://github.com/Tarunkasliwal/BeerBros_mumbai.git
 ```
 
 2. Install required packages:
